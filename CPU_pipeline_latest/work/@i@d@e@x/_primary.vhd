@@ -1,0 +1,43 @@
+library verilog;
+use verilog.vl_types.all;
+entity IDEX is
+    port(
+        RegDst_out      : out    vl_logic;
+        aluOp_out       : out    vl_logic_vector(1 downto 0);
+        aluSrc_out      : out    vl_logic;
+        bh_out          : out    vl_logic;
+        mRead_out       : out    vl_logic;
+        mWrite_out      : out    vl_logic;
+        rWrite_out      : out    vl_logic;
+        Mem2Reg_out     : out    vl_logic;
+        pc_out          : out    vl_logic_vector(31 downto 0);
+        RD1_out         : out    vl_logic_vector(31 downto 0);
+        RD2_out         : out    vl_logic_vector(31 downto 0);
+        EXTND_out       : out    vl_logic_vector(31 downto 0);
+        rs_out          : out    vl_logic_vector(4 downto 0);
+        rt_out          : out    vl_logic_vector(4 downto 0);
+        rd_out          : out    vl_logic_vector(4 downto 0);
+        funct_out       : out    vl_logic_vector(5 downto 0);
+        shamt_out       : out    vl_logic_vector(4 downto 0);
+        RegDst_in       : in     vl_logic;
+        aluOp_in        : in     vl_logic_vector(1 downto 0);
+        aluSrc_in       : in     vl_logic;
+        bh_in           : in     vl_logic;
+        mRead_in        : in     vl_logic;
+        mWrite_in       : in     vl_logic;
+        rWrite_in       : in     vl_logic;
+        Mem2Reg_in      : in     vl_logic;
+        pc_in           : in     vl_logic_vector(31 downto 0);
+        RD1_in          : in     vl_logic_vector(31 downto 0);
+        RD2_in          : in     vl_logic_vector(31 downto 0);
+        EXTND_in        : in     vl_logic_vector(31 downto 0);
+        rs_in           : in     vl_logic_vector(4 downto 0);
+        rt_in           : in     vl_logic_vector(4 downto 0);
+        rd_in           : in     vl_logic_vector(4 downto 0);
+        funct_in        : in     vl_logic_vector(5 downto 0);
+        shamt_in        : in     vl_logic_vector(4 downto 0);
+        clk             : in     vl_logic;
+        rst             : in     vl_logic;
+        en_reg          : in     vl_logic
+    );
+end IDEX;

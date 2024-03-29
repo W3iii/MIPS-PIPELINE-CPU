@@ -1,0 +1,122 @@
+//	Title: MIPS Single-Cycle Processor
+//	Editor: Selene (Computer System and Architecture Lab, ICE, CYCU)
+module mips_pipeline( clk, rst );
+	input clk, rst;
+	
+	// instruction bus
+	wire[31:0] instr;
+	
+	// break out important fields from instruction
+	wire [5:0] opcode, funct, IFID_opcode;
+  wire [4:0] rs, rt, rd, shamt;
+  wire [15:0] immed;
+  wire [31:0] extend_immed, b_offset;
+  wire [25:0] jumpoffset;
+	
+	// datapath signals
+  wire [4:0] rfile_wn;
+  wire [31:0] rfile_rd1, rfile_rd2, rfile_wd, alu_b, alu_out, b_tgt, pc_next,
+                pc, pc_incr,  dmem_rdata, jump_addr, branch_addr;
+                
+  // IFID out
+  wire [31:0] IFID_pc, IFID_instr;
+    
+  // IDEX out
+  wire IDEX_RegWrite, IDEX_Branch, IDEX_RegDst, IDEX_MemtoReg, IDEX_MemRead, IDEX_MemWrite, IDEX_ALUSrc;
+  wire [1:0] IDEX_ALUOp;
+  wire [4:0] IDEX_rs, IDEX_rt, IDEX_rd, IDEX_shamt;
+  wire [5:0] IDEX_funct;
+  wire [31:0] IDEX_rfile_rd1, IDEX_rfile_rd2, IDEX_extend_immed, IDEX_pc;
+  
+  //EXEM out
+  wire EXEM_Branch, EXEM_MemRead, EXEM_MemWrite, EXEM_RegWrite, EXEM_MemtoReg, EXEM_zero;
+  wire [4:0] EXEM_rfile_wn;
+  wire [31:0] EXEM_wd, EXEM_pc, EXEM_memAddr;
+  
+  //MEMWB out
+  wire MEMWB_RegWrite, MEMWB_MemtoReg;
+  wire[4:0] MEMWB_rfile_wn;
+  wire[31:0] MEMWB_rd, MEMWB_addr;
+
+  // control signals
+  wire RegWrite, Branch, PCSrc, RegDst, MemtoReg, MemRead, MemWrite, ALUSrc, Zero, Jump, stall, PC_Write, IFID_Write, delay;
+  wire [1:0] ALUOp;
+  wire [2:0] Operation;
+	
+  assign opcode = IFID_instr[31:26];
+  assign rs = IFID_instr[25:21];
+  assign rt = IFID_instr[20:16];
+  assign rd = IFID_instr[15:11];
+  assign shamt = IFID_instr[10:6];
+  assign funct = IFID_instr[5:0];
+  assign immed = IFID_instr[15:0];
+  assign jumpoffset = IFID_instr[25:0];
+	
+	// branch offset shifter
+  assign b_offset = extend_immed << 2;
+	
+	// jump offset shifter & concatenation
+	assign jump_addr = { pc_incr[31:28], jumpoffset <<2 };
+
+	// module instantiations
+	
+	IFID IFID( .RD_out(IFID_instr), .PC_out(IFID_pc), .RD_in(instr), .PC_in(pc_incr), .clk(clk), .rst(rst), .en_reg(IFID_Write) );
+	
+	IDEX IDEX( .RegDst_out(IDEX_RegDst), .aluOp_out(IDEX_ALUOp), .aluSrc_out(IDEX_ALUSrc), .bh_out(IDEX_Branch),
+	           .mRead_out(IDEX_MemRead), .mWrite_out(IDEX_MemWrite), .rWrite_out(IDEX_RegWrite), .Mem2Reg_out(IDEX_MemtoReg),
+	           .pc_out(IDEX_pc), .RD1_out(IDEX_rfile_rd1), .RD2_out(IDEX_rfile_rd2), .EXTND_out(IDEX_extend_immed), 
+	           .rs_out(IDEX_rs), .rt_out(IDEX_rt),  .rd_out(IDEX_rd), .funct_out(IDEX_funct), .shamt_out(IDEX_shamt), .RegDst_in(RegDst), 
+	           .aluOp_in(ALUOp), .aluSrc_in(ALUSrc), .bh_in(Branch), .mRead_in(MemRead), .mWrite_in(MemWrite), 
+	           .rWrite_in(RegWrite), .Mem2Reg_in(MemtoReg), .pc_in(IFID_pc), .RD1_in(rfile_rd1), .RD2_in(rfile_rd2), 
+	           .EXTND_in(extend_immed), .rs_in(rs), .rt_in(rt), .rd_in(rd), .funct_in(funct), .shamt_in(shamt), .clk(clk), .rst(rst), .en_reg(1'b1) );
+	
+	EXMEM EXMEM( .clk(clk), .rst(rst), .en_reg(1'b1), .Branch(IDEX_Branch), .MemRead(IDEX_MemRead), .MemWrite(IDEX_MemWrite), 
+	             .RegWrite(IDEX_RegWrite), .MemtoReg(IDEX_MemtoReg), .PC_in(b_tgt), .ALUout(alu_out), .RD2(IDEX_rfile_rd2), 
+	             .RegisterFile_wn(rfile_wn), .out_RegWrite(EXEM_RegWrite), .out_MemtoReg(EXEM_MemtoReg), .out_MemWrite(EXEM_MemWrite), 
+	             .out_MemRead(EXEM_MemRead), .out_Branch(EXEM_Branch), .PC_out(EXEM_pc), .out_ALUout(EXEM_memAddr), 
+	             .out_wd(EXEM_wd), .out_RegisterFile_wn(EXEM_rfile_wn) );
+	       
+	MEMWB MEMWB( .clk(clk), .rst(rst), .en_reg(1'b1), .RegWrite(EXEM_RegWrite), .MemtoReg(EXEM_MemtoReg), .ALUout(EXEM_memAddr), 
+	             .RD(dmem_rdata), .Rfile_wn(EXEM_rfile_wn), .out_MemtoReg(MEMWB_MemtoReg), .out_RegWrite(MEMWB_RegWrite), 
+	             .out_RD(MEMWB_rd), .out_ALUout(MEMWB_addr), .out_Rfile_wn(MEMWB_rfile_wn) );
+	             
+	b_eq BEQ( .op_in(opcode), .rd1_in(rfile_rd1), .rd2_in(rfile_rd2), .zero(Zero) );
+	
+	reg32 PC( .clk(clk), .rst(rst), .en_reg(PC_Write), .d_in(pc_next), .d_out(pc) );
+	// sign-extender
+	sign_extend SignExt( .immed_in(immed), .ext_immed_out(extend_immed) );
+	
+	add32 PCADD( .a(pc & delay), .b(32'd4), .result(pc_incr) );
+
+  add32 BRADD( .a(IFID_pc & delay), .b(b_offset), .result(b_tgt) );
+  
+  TotalALU TotalALU( .clk(clk), .dataA(IDEX_rfile_rd1), .dataB(alu_b), .op(IDEX_ALUOp), .funct(IDEX_funct), .shamt(IDEX_shamt), 
+                     .Output(alu_out), .rst(rst) );
+
+  and BR_AND(PCSrc, Branch, Zero);
+
+  MUX_5BIT RFMUX( .sel(IDEX_RegDst), .a(IDEX_rt), .b(IDEX_rd), .y(rfile_wn) );
+
+  MUX PCMUX( .sel(PCSrc), .a(pc_incr), .b(b_tgt), .y(branch_addr) );
+	
+	MUX JMUX( .sel(Jump), .a(branch_addr), .b(jump_addr), .y(pc_next) );
+	
+  MUX ALUMUX( .sel(IDEX_ALUSrc), .a(IDEX_rfile_rd2), .b(IDEX_extend_immed), .y(alu_b) );
+
+  MUX WRMUX( .sel(MEMWB_MemtoReg), .a(MEMWB_addr), .b(MEMWB_rd), .y(rfile_wd) );
+
+  control_unit CTL(.opcode(opcode), .funct(funct), .RegDst(RegDst), .ALUSrc(ALUSrc), .MemtoReg(MemtoReg), 
+                       .RegWrite(RegWrite), .MemRead(MemRead), .MemWrite(MemWrite), .Branch(Branch), 
+                       .Jump(Jump), .ALUOp(ALUOp), .rst(rst));
+	
+	reg_file RegFile( .clk(clk), .RegWrite(MEMWB_RegWrite), .RN1(rs), .RN2(rt), .WN(MEMWB_rfile_wn), 
+					  .WD(rfile_wd), .RD1(rfile_rd1), .RD2(rfile_rd2) );
+
+	memory InstrMem( .clk(clk), .MemRead(1'b1), .MemWrite(1'b0), .wd(32'd0), .addr(pc), .rd(instr) );
+
+	memory DatMem( .clk(clk), .MemRead(EXEM_MemRead), .MemWrite(EXEM_MemWrite), .wd(EXEM_wd), 
+				   .addr(EXEM_memAddr), .rd(dmem_rdata) );	
+	hazard nop( .clk(clk), .stall(stall), .PC_Write(PC_Write), .IFID_Write(IFID_Write) );  
+  nopControl nopControl( .clk(clk), .instr(instr), .stall(stall), .delay(delay) ); 
+				   
+endmodule
