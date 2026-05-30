@@ -5,6 +5,7 @@
 ```mermaid
 flowchart LR
     IF --> ID --> EX --> MEM --> WB
+```
 
 ## Architecture
 
