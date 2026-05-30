@@ -2,79 +2,13 @@
 
 這是一個使用 Verilog 實作的 32-bit MIPS pipeline CPU。設計以五階段管線為主體，包含 instruction fetch、decode、execute、memory access 與 write back，並加入基本 stall 控制、branch/jump PC 選擇，以及 `multu` / `maddu` 對應的 Hi/Lo 暫存器資料路徑。
 
-GitHub Markdown 可以直接顯示流程圖的語法是 `mermaid`：
-
-````markdown
 ```mermaid
 flowchart LR
     IF --> ID --> EX --> MEM --> WB
-```
-````
 
 ## Architecture
 
 ![MIPS pipeline CPU architecture](./mips_pipeline_cpu.png)
-
-```mermaid
-flowchart LR
-    subgraph IF["IF: Instruction Fetch"]
-        PC["PC<br/>reg32"]
-        PCADD["PC + 4<br/>add32"]
-        IMEM["Instruction Memory<br/>memory"]
-        NPC["PC Select<br/>branch / jump mux"]
-        HAZ["hazard"]
-        NOP["nopControl"]
-    end
-
-    subgraph ID["ID: Instruction Decode"]
-        IFID["IF/ID"]
-        CTRL["control_unit"]
-        RF["Register File<br/>reg_file"]
-        EXT["Sign Extend"]
-        BEQ["Branch Compare<br/>b_eq"]
-    end
-
-    subgraph EX["EX: Execute"]
-        IDEX["ID/EX"]
-        ALUMUX["ALU Src MUX"]
-        TALU["TotalALU"]
-        ALU["ALU + Shifter"]
-        MUL["MPY"]
-        HILO["HiLo"]
-        ALUCTL["alu_ctl"]
-        RDMUX["RegDst MUX"]
-        BRADD["Branch Target<br/>add32"]
-    end
-
-    subgraph MEM["MEM: Memory Access"]
-        EXMEM["EX/MEM"]
-        DMEM["Data Memory<br/>memory"]
-    end
-
-    subgraph WB["WB: Write Back"]
-        MEMWB["MEM/WB"]
-        WBMUX["MemtoReg MUX"]
-    end
-
-    PC --> IMEM --> IFID --> CTRL
-    PC --> PCADD --> IFID
-    CTRL --> IDEX
-    IFID --> RF --> IDEX
-    IFID --> EXT --> IDEX
-    RF --> BEQ --> NPC
-    IDEX --> ALUMUX --> TALU
-    ALUCTL --> ALU
-    ALUCTL --> MUL
-    TALU --> ALU
-    TALU --> MUL --> HILO --> TALU
-    IDEX --> RDMUX --> EXMEM
-    IDEX --> BRADD --> NPC
-    TALU --> EXMEM --> DMEM --> MEMWB --> WBMUX --> RF
-    EXMEM --> MEMWB
-    PCADD --> NPC --> PC
-    NOP --> HAZ --> PC
-    HAZ --> IFID
-```
 
 ## Features
 
